@@ -1,8 +1,9 @@
-import { GraphQLServer } from 'graphql-yoga';
+import {
+	GraphQLServer
+} from 'graphql-yoga';
 import uuidv4 from 'uuid/v4';
 
-let users = [
-	{
+let users = [{
 		id: '1',
 		name: 'Debotos',
 		email: 'debotosdas@gmail.com',
@@ -21,8 +22,7 @@ let users = [
 	}
 ];
 
-let posts = [
-	{
+let posts = [{
 		id: '10',
 		title: 'GraphQL 101',
 		body: 'This is how to use GraphQL',
@@ -45,8 +45,7 @@ let posts = [
 	}
 ];
 
-let comments = [
-	{
+let comments = [{
 		id: '1',
 		text: 'This is comment 1',
 		author: '1',
@@ -85,6 +84,7 @@ const typeDefs = `
 		createUser(data: createUserInput): User!
 		deleteUser(id: ID!): User!
 		createPost(data: createPostInput): Post!
+		deletePost(id: ID!): Post!
 		createComment(data: createCommentInput): Comment!
 	}
 	
@@ -226,6 +226,19 @@ const resolvers = {
 			posts.push(post);
 
 			return post;
+		},
+		deletePost(parent, args, ctx, info) {
+			const postExists = posts.findIndex((post) => post.id === args.id)
+
+			if (postExists === -1) {
+				throw new Error('Post not found')
+			}
+
+			const deletedPosts = posts.splice(postExists, 1)
+
+			comments = comments.filter((comment) => comment.post !== args.id)
+			return deletedPosts[0]
+
 		},
 		createComment(parent, args, ctx, info) {
 			const userExists = users.some(user => user.id === args.data.author);
