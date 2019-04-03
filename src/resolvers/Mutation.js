@@ -28,7 +28,7 @@ const Mutation = {
 
     const deletedUsers = db.users.splice(userIndex, 1);
 
-    posts = db.posts.filter(post => {
+    db.posts = db.posts.filter(post => {
       const match = post.author === args.id;
       if (match) {
         comments = db.comments.filter(comment => comment.post !== post.id);
@@ -36,7 +36,7 @@ const Mutation = {
       return !match;
     });
 
-    comments = db.omments.filter(comment => comment.author !== args.id);
+    db.comments = db.omments.filter(comment => comment.author !== args.id);
 
     return deletedUsers[0];
   },
@@ -86,15 +86,20 @@ const Mutation = {
     db.posts.push(post);
 
     if (args.data.published) {
-      pubsub.publish('newPost', {
-        post // this 'post' key have to match with schema's subscription key
+      pubsub.publish('post', {
+        post: { // this 'post' key have to match with schema's subscription key
+          // now send the data structure like 'PostSubscriptionPayload' expect
+          mutation: 'CREATED', // just stylistic choice to make it uppercase
+          data: post
+        }
       })
     }
 
     return post;
   },
   deletePost(parent, args, {
-    db
+    db,
+    pubsub
   }, info) {
     const postExists = db.posts.findIndex((post) => post.id === args.id)
 
@@ -102,10 +107,20 @@ const Mutation = {
       throw new Error('Post not found')
     }
 
-    const deletedPosts = db.posts.splice(postExists, 1)
+    const [post] = db.posts.splice(postExists, 1)
 
-    comments = db.comments.filter((comment) => comment.post !== args.id)
-    return deletedPosts[0]
+    db.comments = db.comments.filter((comment) => comment.post !== args.id)
+
+    if (post.published) {
+      pubsub.publish('post', {
+        post: {
+          mutation: 'DELETED',
+          data: post
+        }
+      })
+    }
+
+    return post
 
   },
   updatePost(parent, args, {
@@ -116,6 +131,9 @@ const Mutation = {
       data
     } = args
     const post = db.posts.find((post) => post.id === id)
+    const originalPost = {
+      ...post
+    }
 
     if (!post) throw new Error('Post not found')
 
@@ -129,6 +147,32 @@ const Mutation = {
 
     if (typeof data.published === 'boolean') {
       post.published = data.published
+
+      if (originalPost.published && !post.published) {
+        // deleted
+        pubsub.publish('post', {
+          post: {
+            mutation: 'DELETED',
+            data: originalPost
+          }
+        })
+      } else if (!originalPost.published && post.published) {
+        // created
+        pubsub.publish('post', {
+          post: {
+            mutation: 'CREATED',
+            data: post
+          }
+        })
+      }
+    } else if (post.published) {
+      // update
+      pubsub.publish('post', {
+        post: {
+          mutation: 'UPDATED',
+          data: post
+        }
+      })
     }
 
     return post
@@ -148,23 +192,35 @@ const Mutation = {
     };
     db.comments.push(comment);
     pubsub.publish(`comment ${args.data.post}`, {
-      comment
+      comment: {
+        mutation: 'CREATED',
+        data: comment
+      }
     })
     return comment;
   },
   deleteComment(parent, args, {
-    db
+    db,
+    pubsub
   }, info) {
     const commentExists = db.comments.findIndex((comment) => comment.id === args.id)
 
     if (commentExists === -1) throw new Error('Comment not found')
 
-    const deletedComments = db.comments.splice(commentExists, 1)
+    const [comment] = db.comments.splice(commentExists, 1)
 
-    return deletedComments[0];
+    pubsub.publish(`comment ${comment.post}`, {
+      comment: {
+        mutation: 'DELETED',
+        data: comment
+      }
+    })
+
+    return comment;
   },
   updateComment(parent, args, {
-    db
+    db,
+    pubsub
   }, info) {
     let {
       id,
@@ -177,6 +233,13 @@ const Mutation = {
     if (typeof data.text === 'string') {
       comment.text = data.text
     }
+
+    pubsub.publish(`comment ${comment.post}`, {
+      comment: {
+        mutation: 'UPDATED',
+        data: comment
+      }
+    })
 
     return comment
   }

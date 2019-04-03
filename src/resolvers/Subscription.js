@@ -17,7 +17,7 @@ const Subscription = {
   },
   post: { // 'post' key have to match with schema's subscription
     subscribe(parent, args, ctx, info) {
-      return ctx.pubsub.asyncIterator('newPost')
+      return ctx.pubsub.asyncIterator('post')
     }
   },
   comment: { // It will be an object
