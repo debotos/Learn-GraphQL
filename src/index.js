@@ -10,6 +10,7 @@ import Subscription from './resolvers/Subscription'
 import User from './resolvers/User'
 import Post from './resolvers/Post'
 import Comment from './resolvers/Comment'
+import prisma from './prisma'
 
 // Note:
 /* In Resolvers => If any of the field type is not Scalar then you have to set up a Resolver */
@@ -28,7 +29,8 @@ const server = new GraphQLServer({
 	},
 	context: {
 		db,
-		pubsub
+		pubsub,
+		prisma
 	}
 });
 

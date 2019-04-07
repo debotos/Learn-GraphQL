@@ -1,33 +1,9 @@
 const Query = {
-  comments(parent, args, {
-    db
-  }, info) {
-    return db.comments;
-  },
   users(parent, args, {
-    db
+    db,
+    prisma
   }, info) {
-    if (!args.query) {
-      return db.users;
-    }
-    return db.users.filter(user =>
-      user.name.toLowerCase().includes(args.query.toLowerCase())
-    );
-  },
-  me() {
-    return {
-      id: '123abc',
-      name: 'Debotos',
-      email: 'debotosdas@gmail.com'
-    };
-  },
-  post() {
-    return {
-      id: 'abc123',
-      title: 'graphql-yoga basic',
-      body: 'A very begineer friendly GraphQL starter',
-      published: false
-    };
+    return prisma.query.users(null, info)
   },
   posts(parent, args, {
     db
@@ -43,7 +19,29 @@ const Query = {
     );
 
     return isTitleMatch || isBodyMatch;
-  }
+  },
+  comments(parent, args, {
+    db
+  }, info) {
+    return db.comments;
+  },
+
+  me() {
+    return {
+      id: '123abc',
+      name: 'Debotos',
+      email: 'debotosdas@gmail.com'
+    };
+  },
+  post() {
+    return {
+      id: 'abc123',
+      title: 'graphql-yoga basic',
+      body: 'A very begineer friendly GraphQL starter',
+      published: false
+    };
+  },
+
 }
 
 export {
